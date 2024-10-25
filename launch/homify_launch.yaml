@@ -1,0 +1,31 @@
+launch:
+  - arg:
+      name: 'namespace'
+      default: '$(env ROS_NAMESPACE)'
+  - arg:
+      name: 'gps_fix_time'
+      default: '10.0'
+  - arg:
+      name: 'origin_lat'
+      default: '39.9489482'
+  - arg:
+      name: 'origin_lon'
+      default: '-75.1882389'
+  - arg:
+      name: 'origin_alt'
+      default: '5669.47'
+
+  - node:
+      pkg: "px4_homify"
+      exec: "gps_fix"
+      name: "gps_fix"
+      namespace: '$(var namespace)'
+      param:
+        - name: "gps_fix_time"
+          value: "$(var gps_fix_time)"
+        - name: "origin_lat"
+          value: "$(var origin_lat)"
+        - name: "origin_lon"
+          value: "$(var origin_lon)"
+        - name: "origin_alt"
+          value: "$(var origin_alt)"
