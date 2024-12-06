@@ -117,8 +117,8 @@ class GPSFix(Node):
             self.publish_launch_gps.publish(Point(x=self.launch_gps[0], y=self.launch_gps[1], z=self.launch_gps[2]))
 
         elif msg.fix_type >= 3:
-            self.gps_altitues.append(msg.altitude_msl_m)
-            true_gps = np.array([msg.latitude_deg, msg.longitude_deg], dtype=np.float64)
+            self.gps_altitues.append(msg.alt)
+            true_gps = np.array([msg.lat, msg.lon], dtype=np.float64)*1e-7
             self.gps_data.append(true_gps)
             transformer = GeoLocalTransform()
             xyz = transformer.UTMForward(true_gps[0], true_gps[1])
