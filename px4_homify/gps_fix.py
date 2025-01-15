@@ -2,6 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from px4_msgs.msg import SensorGps
+from px4_msgs.msg import VehicleLocalPosition
 import time
 import numpy as np
 from geolocaltransform.geolocaltransform import GeoLocalTransform
@@ -26,6 +27,16 @@ class GPSFix(Node):
             SensorGps,
             'fmu/out/vehicle_gps_position',
             self.gps_callback,
+            qos_profile
+        )
+        
+        # Collecting the heading at launch as well.
+        # This is only used for getting the origin heading to setup the GCS
+        # An aggregate heading is NOT published
+        self.local_pos_sub = self.create_subscription(
+            VehicleLocalPosition,
+            'fmu/out/vehicle_local_position',
+            self.local_pos_callback,
             qos_profile
         )
 
@@ -53,13 +64,18 @@ class GPSFix(Node):
         self.gps_data = []
         self.utm_data = []
         self.gps_altitues = []
+        self.headings = []
         self.launch_gps = np.zeros(3)
         self.start_time = time.time()
+
+        self.get_logger().info('GPS Fix Node Initialized')
 
         while self.status == 'running':
             rclpy.spin_once(self)
 
         self.median_launch_gps, self.mean_launch_gps = self.get_median_gps_coordinates()
+        self.median_heading = self.get_median_heading()
+        self.get_logger().info(f'Median Heading: {self.median_heading:.2f}')
         self.get_logger().info(f'Median Launch Location: Latitude: {self.median_launch_gps[0]:.7f}, Longitude: {self.median_launch_gps[1]:.7f}')
         self.get_logger().info(f'Mean Launch Location: Latitude: {self.mean_launch_gps[0]:.7f}, Longitude: {self.mean_launch_gps[1]:.7f}')
         # self.launch_gps = self.mean_launch_gps
@@ -130,6 +146,14 @@ class GPSFix(Node):
                 self.get_logger().info(f'Time left: {self.total_time - (time.time() - self.start_time):.2f} seconds')
         else:
             self.get_logger().info('No GPS Fix')
+
+    def get_median_heading(self):
+        return np.median(self.headings)
+
+    def local_pos_callback(self, msg):
+        if self.status == 'running':
+            self.headings.append(msg.heading)
+
 
 def main(args=None):
     rclpy.init(args=args)
