@@ -20,7 +20,6 @@ setup(
     maintainer_email='sauravag@upenn.edu',
     description='TODO: Package description',
     license='Apache-2.0',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'gps_fix = px4_homify.gps_fix:main'
