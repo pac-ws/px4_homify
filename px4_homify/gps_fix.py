@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rclpy
 from rclpy.node import Node
+from rclpy.wait_for_message import wait_for_message
 from px4_msgs.msg import SensorGps
 from px4_msgs.msg import VehicleLocalPosition
 import time
@@ -23,9 +24,24 @@ class GPSFix(Node):
             history=HistoryPolicy.KEEP_LAST,
             depth=1
         )
+        px4_gps_topic = 'fmu/out/vehicle_gps_position'
+        px4_local_pos_topic = 'fmu/out/vehicle_local_position'
+        self.get_logger().info(f'Waiting for messages from topics: {px4_gps_topic}, {px4_local_pos_topic}')
+        ret, msg = wait_for_message(SensorGps, self, px4_gps_topic, qos_profile=qos_profile)
+        if not ret:
+            self.get_logger().error(f'Failed to get message from topic {px4_gps_topic}')
+            self.destroy_node()
+            return
+        ret, msg = wait_for_message(VehicleLocalPosition, self, px4_local_pos_topic, qos_profile=qos_profile)
+        if not ret:
+            self.get_logger().error(f'Failed to get message from topic {px4_local_pos_topic}')
+            self.destroy_node()
+            return
+        self.get_logger().info(f'Received messages from topics: {px4_gps_topic}, {px4_local_pos_topic}. Creating subscriptions')
+
         self.subscription = self.create_subscription(
             SensorGps,
-            'fmu/out/vehicle_gps_position',
+            px4_gps_topic,
             self.gps_callback,
             qos_profile
         )
@@ -35,7 +51,7 @@ class GPSFix(Node):
         # An aggregate heading is NOT published
         self.local_pos_sub = self.create_subscription(
             VehicleLocalPosition,
-            'fmu/out/vehicle_local_position',
+            px4_local_pos_topic,
             self.local_pos_callback,
             qos_profile
         )
@@ -129,6 +145,7 @@ class GPSFix(Node):
 
 
     def gps_callback(self, msg):
+        self.received_gps = True
         if self.status == 'done':
             self.publish_launch_gps.publish(Point(x=self.launch_gps[0], y=self.launch_gps[1], z=self.launch_gps[2]))
 
@@ -151,6 +168,7 @@ class GPSFix(Node):
         return np.median(self.headings)
 
     def local_pos_callback(self, msg):
+        self.received_local_pos = True
         if self.status == 'running':
             self.headings.append(msg.heading)
 
@@ -159,8 +177,7 @@ def main(args=None):
     rclpy.init(args=args)
     gps_fix_node = GPSFix()
 
-    while rclpy.ok():
-        rclpy.spin(gps_fix_node)
+    rclpy.spin(gps_fix_node)
     gps_fix_node.destroy_node()
     rclpy.shutdown()
 
