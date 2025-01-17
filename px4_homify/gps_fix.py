@@ -100,17 +100,18 @@ class GPSFix(Node):
         filtered_altitudes = filtered_altitudes[self.reject_outliers(filtered_altitudes) < self.m]
         # self.get_logger().info(f'Filtered Altitude data size: {filtered_altitudes.shape}')
         self.launch_gps[2] = np.mean(filtered_altitudes)
+        self.launch_gps[2] = self.median_heading
         gps_params = rclpy.parameter.Parameter('launch_gps', rclpy.Parameter.Type.DOUBLE_ARRAY, [self.launch_gps[0], self.launch_gps[1], self.launch_gps[2]])
         self.set_parameters([gps_params])
-        with open('launch_gps', 'w') as f:
-            f.write(f'{self.median_launch_gps[0]:.9f} {self.median_launch_gps[1]:.9f} {self.launch_gps[2]:.2f}')
-            f.write('\n')
-            f.write(f'{self.mean_launch_gps[0]:.9f} {self.mean_launch_gps[1]:.9f} {self.launch_gps[2]:.2f}')
+        # with open('launch_gps', 'w') as f:
+        #     f.write(f'{self.median_launch_gps[0]:.9f} {self.median_launch_gps[1]:.9f} {self.launch_gps[2]:.2f}')
+        #     f.write('\n')
+        #     f.write(f'{self.mean_launch_gps[0]:.9f} {self.mean_launch_gps[1]:.9f} {self.launch_gps[2]:.2f}')
 
-        geo_transformer = GeoLocalTransform(self.origin_lat, self.origin_lon, self.origin_alt)
-        xyz = geo_transformer.Forward(self.launch_gps[0], self.launch_gps[1], self.launch_gps[2])
-        self.get_logger().info(f'Relative Launch Location: X: {xyz[0]:.2f}, Y: {xyz[1]:.2f}, Z: {xyz[2]:.2f}')
-        self.get_logger().info(f'Distance from Origin xy: {np.linalg.norm(xyz[:2]):.2f}')
+        # geo_transformer = GeoLocalTransform(self.origin_lat, self.origin_lon, self.origin_alt)
+        # xyz = geo_transformer.Forward(self.launch_gps[0], self.launch_gps[1], self.launch_gps[2])
+        # self.get_logger().info(f'Relative Launch Location: X: {xyz[0]:.2f}, Y: {xyz[1]:.2f}, Z: {xyz[2]:.2f}')
+        # self.get_logger().info(f'Distance from Origin xy: {np.linalg.norm(xyz[:2]):.2f}')
         self.status = 'done'
 
     def reject_outliers(self, data):
@@ -165,7 +166,10 @@ class GPSFix(Node):
             self.get_logger().info('No GPS Fix')
 
     def get_median_heading(self):
-        return np.median(self.headings)
+        # return np.median(self.headings)
+        headings_data = np.array(self.headings)
+        headings_data = headings_data[self.reject_outliers(headings_data) < self.m]
+        return np.median(np.array(headings_data))
 
     def local_pos_callback(self, msg):
         self.received_local_pos = True
