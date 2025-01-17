@@ -163,7 +163,7 @@ class GPSFix(Node):
             else:
                 self.get_logger().info(f'Time left: {self.total_time - (time.time() - self.start_time):.2f} seconds')
         else:
-            self.get_logger().info('No GPS Fix')
+            self.get_logger().warning('No GPS Fix', once=True)
 
     def get_median_heading(self):
         # return np.median(self.headings)
