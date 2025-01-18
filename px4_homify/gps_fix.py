@@ -56,7 +56,7 @@ class GPSFix(Node):
             qos_profile
         )
 
-        self.publish_launch_gps = self.create_publisher(Point, 'launch_gps', qos_profile)
+        # self.publish_launch_gps = self.create_publisher(Point, 'launch_gps', qos_profile)
 
         # Get the parameters
         self.declare_parameter('gps_fix_time', rclpy.Parameter.Type.DOUBLE)
@@ -113,6 +113,8 @@ class GPSFix(Node):
         # self.get_logger().info(f'Relative Launch Location: X: {xyz[0]:.2f}, Y: {xyz[1]:.2f}, Z: {xyz[2]:.2f}')
         # self.get_logger().info(f'Distance from Origin xy: {np.linalg.norm(xyz[:2]):.2f}')
         self.status = 'done'
+        self.destroy_subscription(self.subscription)
+        self.destroy_subscription(self.local_pos_sub)
 
     def reject_outliers(self, data):
         d = np.abs(data - np.median(data))
@@ -148,7 +150,8 @@ class GPSFix(Node):
     def gps_callback(self, msg):
         self.received_gps = True
         if self.status == 'done':
-            self.publish_launch_gps.publish(Point(x=self.launch_gps[0], y=self.launch_gps[1], z=self.launch_gps[2]))
+            # self.publish_launch_gps.publish(Point(x=self.launch_gps[0], y=self.launch_gps[1], z=self.launch_gps[2]))
+            return
 
         elif msg.fix_type >= 3:
             self.gps_altitues.append(msg.alt)
