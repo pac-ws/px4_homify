@@ -20,7 +20,7 @@ class GPSFix(Node):
 
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            durability=DurabilityPolicy.VOLATILE,
             history=HistoryPolicy.KEEP_LAST,
             depth=1
         )
@@ -53,7 +53,7 @@ class GPSFix(Node):
             VehicleLocalPosition,
             px4_local_pos_topic,
             self.local_pos_callback,
-            qos_profile
+            qos_profile=qos_profile
         )
 
         # self.publish_launch_gps = self.create_publisher(Point, 'launch_gps', qos_profile)
