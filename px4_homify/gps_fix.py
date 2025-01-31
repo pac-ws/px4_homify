@@ -46,9 +46,7 @@ class GPSFix(Node):
             qos_profile
         )
         
-        # Collecting the heading at launch as well.
-        # This is only used for getting the origin heading to setup the GCS
-        # An aggregate heading is NOT published
+        # Collecting the heading and local z at launch as well.
         self.local_pos_sub = self.create_subscription(
             VehicleLocalPosition,
             px4_local_pos_topic,
@@ -56,7 +54,7 @@ class GPSFix(Node):
             qos_profile=qos_profile
         )
 
-        # self.publish_launch_gps = self.create_publisher(Point, 'launch_gps', qos_profile)
+        self.publish_launch_gps = self.create_publisher(Point, 'launch_gps', qos_profile)
 
         # Get the parameters
         self.declare_parameter('gps_fix_time', rclpy.Parameter.Type.DOUBLE)
@@ -81,6 +79,7 @@ class GPSFix(Node):
         self.utm_data = []
         self.gps_altitues = []
         self.headings = []
+        self.local_altitudes = []
         self.launch_gps = np.zeros(3)
         self.start_time = time.time()
 
@@ -91,17 +90,19 @@ class GPSFix(Node):
 
         self.median_launch_gps, self.mean_launch_gps = self.get_median_gps_coordinates()
         self.median_heading = self.get_median_heading()
+        self.median_altitude = self.get_median_altitude()
         self.get_logger().info(f'Median Heading: {self.median_heading:.2f}')
+        self.get_logger().info(f'Median Altitude: {self.median_altitude:.2f}')
         self.get_logger().info(f'Median Launch Location: Latitude: {self.median_launch_gps[0]:.7f}, Longitude: {self.median_launch_gps[1]:.7f}')
         self.get_logger().info(f'Mean Launch Location: Latitude: {self.mean_launch_gps[0]:.7f}, Longitude: {self.mean_launch_gps[1]:.7f}')
         # self.launch_gps = self.mean_launch_gps
         self.launch_gps = self.median_launch_gps
-        filtered_altitudes = np.array(self.gps_altitues)
-        filtered_altitudes = filtered_altitudes[self.reject_outliers(filtered_altitudes) < self.m]
+        #filtered_altitudes = np.array(self.gps_altitues)
+        #filtered_altitudes = filtered_altitudes[self.reject_outliers(filtered_altitudes) < self.m]
         # self.get_logger().info(f'Filtered Altitude data size: {filtered_altitudes.shape}')
-        self.launch_gps[2] = np.mean(filtered_altitudes)
+        #self.launch_gps[2] = np.mean(filtered_altitudes)
         self.launch_gps[2] = self.median_heading
-        gps_params = rclpy.parameter.Parameter('launch_gps', rclpy.Parameter.Type.DOUBLE_ARRAY, [self.launch_gps[0], self.launch_gps[1], self.launch_gps[2]])
+        gps_params = rclpy.parameter.Parameter('launch_gps', rclpy.Parameter.Type.DOUBLE_ARRAY, [self.launch_gps[0], self.launch_gps[1], self.launch_gps[2], self.median_altitude])
         self.set_parameters([gps_params])
         # with open('launch_gps', 'w') as f:
         #     f.write(f'{self.median_launch_gps[0]:.9f} {self.median_launch_gps[1]:.9f} {self.launch_gps[2]:.2f}')
@@ -174,10 +175,16 @@ class GPSFix(Node):
         headings_data = headings_data[self.reject_outliers(headings_data) < self.m]
         return np.median(np.array(headings_data))
 
+    def get_median_altitude(self):
+        altitudes_data = np.array(self.local_altitudes)
+        altitudes_data = altitudes_data[self.reject_outliers(altitudes_data) < self.m]
+        return np.median(np.array(altitudes_data))
+
     def local_pos_callback(self, msg):
         self.received_local_pos = True
         if self.status == 'running':
             self.headings.append(msg.heading)
+            self.local_altitudes.append(msg.z)
 
 
 def main(args=None):
