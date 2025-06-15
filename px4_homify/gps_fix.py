@@ -37,7 +37,7 @@ class GPSFix(Node):
             self.get_logger().error(f'Failed to get message from topic {px4_local_pos_topic}')
             self.destroy_node()
             return
-        self.get_logger().info(f'Received messages from topics: {px4_gps_topic}, {px4_local_pos_topic}. Creating subscriptions')
+        # self.get_logger().info(f'Received messages from topics: {px4_gps_topic}, {px4_local_pos_topic}. Creating subscriptions')
 
         self.subscription = self.create_subscription(
             SensorGps,
@@ -68,10 +68,10 @@ class GPSFix(Node):
         self.origin_lon = self.get_parameter('origin_lon').get_parameter_value().double_value
         self.origin_alt = self.get_parameter('origin_alt').get_parameter_value().double_value
 
-        self.get_logger().info(f'GPS Fix Time: {self.total_time}')
-        self.get_logger().info(f'Origin Latitude: {self.origin_lat}')
-        self.get_logger().info(f'Origin Longitude: {self.origin_lon}')
-        self.get_logger().info(f'Origin Altitude: {self.origin_alt}')
+        # self.get_logger().info(f'GPS Fix Time: {self.total_time}')
+        # self.get_logger().info(f'Origin Latitude: {self.origin_lat}')
+        # self.get_logger().info(f'Origin Longitude: {self.origin_lon}')
+        # self.get_logger().info(f'Origin Altitude: {self.origin_alt}')
 
         self.status = 'running'
         self.m = 3
@@ -83,7 +83,7 @@ class GPSFix(Node):
         self.launch_gps = np.zeros(3)
         self.start_time = time.time()
 
-        self.get_logger().info('GPS Fix Node Initialized')
+        # self.get_logger().info('GPS Fix Node Initialized')
 
         # Use a timer instead of blocking spin loop
         self.collection_timer = self.create_timer(0.1, self.check_collection_status)  # 100ms
@@ -97,8 +97,7 @@ class GPSFix(Node):
             self.collection_timer.cancel()
             self.complete_gps_processing()
         else:
-            # Log progress every 5 seconds using ROS 2 throttled logging
-            self.get_logger().info(f'Time left: {self.total_time - time_elapsed:.2f} seconds', throttle_duration_sec=5.0)
+            self.get_logger().info(f'Time left: {self.total_time - time_elapsed:.2f} seconds', throttle_duration_sec=1.0)
 
     def complete_gps_processing(self):
         """Complete GPS data processing once collection is done"""
@@ -145,22 +144,17 @@ class GPSFix(Node):
 
     def get_median_gps_coordinates(self):
         utm_data = np.array(self.utm_data)
-        self.get_logger().info(f'Initial UTM data size: {utm_data.shape}')
         utm_data_x = np.array(utm_data[self.reject_outliers(utm_data[:,0]) < self.m, 0])
         utm_data_y = np.array(utm_data[self.reject_outliers(utm_data[:,1]) < self.m, 1])
-        self.get_logger().info(f'Filtered UTM x data size: {utm_data_x.shape}')
-        self.get_logger().info(f'Filtered UTM y data size: {utm_data_y.shape}')
 
         median = np.array([np.median(utm_data_x), np.median(utm_data_y), 0.])
         idx = np.argmin(np.linalg.norm(utm_data - median, axis=1))
-        self.get_logger().info(f'Idx: {idx}')
         # median_gps = self.gps_data[idx]
         median_gps = np.zeros(3)
         median_gps[:2] = self.gps_data[idx]
 
         mean_utm_x = np.mean(utm_data_x)
         mean_utm_y = np.mean(utm_data_y)
-        self.get_logger().info(f'Mean UTM X: {mean_utm_x}, Mean UTM Y: {mean_utm_y}')
         geo_transformer = GeoLocalTransform()
         mean_gps = geo_transformer.UTMReverse(mean_utm_x, mean_utm_y, median_gps[0], median_gps[1])
         return median_gps, mean_gps
