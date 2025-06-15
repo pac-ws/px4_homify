@@ -94,7 +94,7 @@ class GPSFix(Node):
         
         if time_elapsed > self.total_time and self.status == 'running':
             self.status = 'data'
-            self.collection_timer.cancel()
+            self.destroy_timer(self.collection_timer)
             self.complete_gps_processing()
         else:
             self.get_logger().info(f'Time left: {self.total_time - time_elapsed:.2f} seconds', throttle_duration_sec=1.0)
