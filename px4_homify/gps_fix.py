@@ -85,8 +85,26 @@ class GPSFix(Node):
 
         self.get_logger().info('GPS Fix Node Initialized')
 
-        while self.status == 'running':
-            rclpy.spin_once(self)
+        # Use a timer instead of blocking spin loop
+        self.collection_timer = self.create_timer(0.1, self.check_collection_status)  # 100ms
+
+    def check_collection_status(self):
+        """Timer callback to check if collection time is complete"""
+        time_elapsed = time.time() - self.start_time
+        
+        if time_elapsed > self.total_time and self.status == 'running':
+            self.status = 'data'
+            self.collection_timer.cancel()
+            self.complete_gps_processing()
+        else:
+            # Log progress every 5 seconds using ROS 2 throttled logging
+            self.get_logger().info(f'Time left: {self.total_time - time_elapsed:.2f} seconds', throttle_duration_sec=5.0)
+
+    def complete_gps_processing(self):
+        """Complete GPS data processing once collection is done"""
+        if len(self.gps_data) == 0:
+            self.get_logger().error('No GPS data collected!')
+            return
 
         self.median_launch_gps, self.mean_launch_gps = self.get_median_gps_coordinates()
         self.median_heading = self.get_median_heading()
@@ -150,11 +168,12 @@ class GPSFix(Node):
 
     def gps_callback(self, msg):
         self.received_gps = True
-        if self.status == 'done':
+        if self.status in ['done', 'data']:
+            # Stop collecting once timer expires or processing is complete
             # self.publish_launch_gps.publish(Point(x=self.launch_gps[0], y=self.launch_gps[1], z=self.launch_gps[2]))
             return
 
-        elif msg.fix_type >= 3:
+        elif msg.fix_type >= 3 and self.status == 'running':
             self.gps_altitues.append(msg.alt)
             true_gps = np.array([msg.lat, msg.lon], dtype=np.float64)*1e-7
             self.gps_data.append(true_gps)
@@ -162,10 +181,6 @@ class GPSFix(Node):
             xyz = transformer.UTMForward(true_gps[0], true_gps[1])
             self.utm_data.append(xyz)
 
-            if time.time() - self.start_time > self.total_time:
-                self.status = 'data'
-            else:
-                self.get_logger().info(f'Time left: {self.total_time - (time.time() - self.start_time):.2f} seconds')
         else:
             self.get_logger().warning('No GPS Fix', once=True)
 
