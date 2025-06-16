@@ -97,7 +97,7 @@ class GPSFix(Node):
             self.destroy_timer(self.collection_timer)
             self.complete_gps_processing()
         else:
-            self.get_logger().info(f'Time left: {self.total_time - time_elapsed:.2f} seconds', throttle_duration_sec=1.0)
+            self.get_logger().info(f'Time left: {self.total_time - time_elapsed:.0f} seconds', throttle_duration_sec=1.0)
 
     def complete_gps_processing(self):
         """Complete GPS data processing once collection is done"""
